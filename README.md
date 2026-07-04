@@ -79,15 +79,25 @@ enable_registration: false
 allow_guest_access: false
 ```
 
-5. `cinny/config.json` の `homeserverList` を自分の `SERVER_NAME` に合わせます。
+5. `cinny/config.json` を自分の `SERVER_NAME` で生成します(手で `homeserverList` を編集しても同じです)。
+
+```
+bash scripts/generate-cinny-config.sh
+```
+
+    生成される内容(homeserver 固定・カスタムサーバー無効・探索タブ非表示):
 
 ```
 {
   "defaultHomeserver": 0,
   "homeserverList": ["example.com"],
-  "allowCustomHomeservers": false
+  "allowCustomHomeservers": false,
+  "hideExplore": true
 }
 ```
+
+    クライアントのイメージは SelfMatrix fork(`ghcr.io/zoobookfool/selfmatrix-cinny`)が既定です。
+    別ビルドを使う場合は `.env` の `CINNY_IMAGE` / `CINNY_TAG` を差し替えます。
 
 6. 起動します。
 
@@ -141,7 +151,9 @@ docker compose exec synapse register_new_matrix_user -c /data/homeserver.yaml ht
 ## 参考リンク
 
 - Cinny: <https://github.com/cinnyapp/cinny>
-- Cinny container package: <https://github.com/orgs/cinnyapp/packages/container/package/cinny>
+- SelfMatrix Cinny fork: <https://github.com/zoobookfool/selfmatrix-cinny>
+- SelfMatrix container package: <https://github.com/zoobookfool/selfmatrix-cinny/pkgs/container/selfmatrix-cinny>
+- Cinny container package (upstream): <https://github.com/orgs/cinnyapp/packages/container/package/cinny>
 - Synapse install docs: <https://element-hq.github.io/synapse/latest/setup/installation.html>
 - Synapse Docker README: <https://github.com/element-hq/synapse/blob/develop/docker/README.md>
 - Matrix Client-Server API / E2EE: <https://spec.matrix.org/latest/client-server-api/#end-to-end-encryption>

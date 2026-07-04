@@ -45,7 +45,9 @@ services:
       start_period: 10s
 
   cinny:
-    image: ghcr.io/cinnyapp/cinny:${CINNY_TAG:-latest}
+    # SelfMatrix fork image (bundles the forked element-call embedded build).
+    # Built by the fork's CI: https://github.com/zoobookfool/selfmatrix-cinny
+    image: ${CINNY_IMAGE:-ghcr.io/zoobookfool/selfmatrix-cinny}:${CINNY_TAG:-latest}
     restart: unless-stopped
     volumes:
       - ./cinny/config.json:/app/config.json:ro

@@ -2,6 +2,7 @@
   "defaultHomeserver": 0,
   "homeserverList": ["example.com"],
   "allowCustomHomeservers": false,
+  "hideExplore": true,
   "featuredCommunities": {
     "openAsDefault": false,
     "spaces": [],
