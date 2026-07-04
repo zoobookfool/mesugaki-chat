@@ -31,6 +31,13 @@ Exit criteria:
 
 ## Phase 1: Vanilla text deploy
 
+**進捗 (2026-07-05): 完了。** 経路A (Cloudflare → VPS edge → Tailscale → 自宅) で稼働。
+実環境では VPS に既存の edge nginx があったため、edge は Caddy ではなく既存 nginx の
+vhost 追加で構成した (自宅側も既存サービスと同居のため、compose override で caddy を
+無効化して synapse/cinny を tailnet に直接公開する形)。クライアントは fork イメージ
+(ghcr.io/zoobookfool/selfmatrix-cinny) を使用。E2EE 双方向会話と federation tester を
+確認済み。外部ユーザー招待の実地確認のみ残 (tester では federation OK)。
+
 - Synapse + PostgreSQL を自宅で起動
 - Cloudflare → VPS(edge Caddy)→ Tailscale → 自宅 Caddy の HTTP 経路を通す
 - well-known と HTTPS を提供
