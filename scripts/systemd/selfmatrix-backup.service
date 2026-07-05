@@ -1,0 +1,13 @@
+# SelfMatrix daily backup.
+# Install: edit WorkingDirectory/User below to match your deploy, then
+#   sudo cp scripts/systemd/selfmatrix-backup.* /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now selfmatrix-backup.timer
+[Unit]
+Description=SelfMatrix backup (PostgreSQL + signing key + media)
+Wants=selfmatrix-backup.timer
+
+[Service]
+Type=oneshot
+User=REPLACE_WITH_DEPLOY_USER
+WorkingDirectory=REPLACE_WITH_REPO_PATH
+ExecStart=/usr/bin/env bash scripts/backup.sh

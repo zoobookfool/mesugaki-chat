@@ -115,6 +115,35 @@ docker compose exec synapse register_new_matrix_user -c /data/homeserver.yaml ht
 
     作成が終わったら、不要であれば `registration_shared_secret` を削除して再起動します。
 
+## バックアップと復元
+
+`scripts/backup.sh` が PostgreSQL のダンプ・**署名鍵**(これを失うとサーバーの federation 上の身元が恒久的に失われます)・設定・メディアを 1 世代のディレクトリにまとめ、チェックサムを付けて `backups/` に保存します(既定で最新 7 世代を保持)。署名鍵とメディアの読み取りに `sudo` を使います。
+
+```
+bash scripts/backup.sh
+```
+
+自動化するには systemd タイマーを入れます(毎日 04:00)。
+
+```
+# scripts/systemd/selfmatrix-backup.service の User と WorkingDirectory を自分の環境に合わせてから:
+sudo cp scripts/systemd/selfmatrix-backup.* /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now selfmatrix-backup.timer
+```
+
+**復元できることを定期的に確かめてください。** `--drill` は使い捨ての一時 DB に復元して行数を報告し、本番には一切触れません。
+
+```
+bash scripts/restore.sh backups/<timestamp> --drill
+```
+
+実際に本番へ戻すとき(DB 消失など)は `--drill` を外します。破壊的操作なので確認プロンプトが出ます。
+
+```
+bash scripts/restore.sh backups/<timestamp>
+```
+
 ## ネットワーク経路
 
 目標の経路は「外部 → Cloudflare → VPS → Tailscale → 自宅サーバー(HTTP系のみ)」+「メディアは Cloudflare を迂回して VPS 直終端」です。この経路では自宅ルーターのポート開放が不要になります。従来の自宅直公開(80/443 転送)も代替案として残しています。詳細と両者の比較は [docs/home-server-network.md](docs/home-server-network.md) を見てください。

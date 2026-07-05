@@ -1,0 +1,11 @@
+# Runs scripts/backup.sh daily at 04:00 local time (with a randomized delay).
+[Unit]
+Description=SelfMatrix daily backup timer
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+RandomizedDelaySec=900
+Persistent=true
+
+[Install]
+WantedBy=timers.target
