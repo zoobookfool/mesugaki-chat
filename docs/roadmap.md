@@ -120,6 +120,16 @@ Exit criteria:
 
 ## Phase 4: Operations hardening & distribution readiness
 
+**進捗 (2026-07-05): 完了 (v0.1.0 タグ)。** バックアップ体制 (pg_dump + 署名鍵 + メディア、
+`restore.sh --drill` によるリストア訓練を本番で実証、systemd timer で毎日自動)、
+homeserver.yaml の生成自動化 (手動編集ゼロ)、CI (shellcheck + compose 検証 + env 完全性)、
+運用 runbook (docs/operations.md、荒らし対応・権限・admin API 遮断・外部バックアップ)、
+イメージタグ固定 + Renovate 設定、VPS 再構築スクリプト (provision-rtc-vps.sh、dry-run 付き)、
+3 デプロイ形態の切替 (compose profile ではなく override 雛形方式で実現)、
+`/_synapse/admin` の遮断 (同梱 Caddyfile + 実環境の edge の両方)。exit criteria 3 点達成。
+残: Renovate GitHub App のインストール (リポジトリオーナーの 1 クリック作業)。
+負荷試験由来の VPS 増強判断 (RAM 2GB 推奨) は運用データを見て実施。
+
 友人が同じスターターを建てる前に、配布に耐える状態へ引き上げます。
 
 - セットアップの編集ゼロ化(homeserver.yaml の自動パッチスクリプト)
