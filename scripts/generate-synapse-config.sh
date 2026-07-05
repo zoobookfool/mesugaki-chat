@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Generate synapse/data/homeserver.yaml and patch it for this deploy from .env,
 # with no hand-editing required: PostgreSQL wiring, public_baseurl, upload cap,
-# reverse-proxy trust, closed registration, and the MatrixRTC feature flags.
+# reverse-proxy trust, registration (closed by default, or invite-token gated
+# via ENABLE_INVITE_REGISTRATION), and the MatrixRTC feature flags.
 # Idempotent: re-running only regenerates + re-patches if you pass --force.
 set -euo pipefail
 
@@ -44,6 +45,7 @@ sudo env \
   POSTGRES_USER="${POSTGRES_USER:-synapse}" \
   POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
   MAX_UPLOAD_SIZE="${MAX_UPLOAD_SIZE:-90M}" \
+  ENABLE_INVITE_REGISTRATION="${ENABLE_INVITE_REGISTRATION:-false}" \
   HS_PATH="$HS" \
   python3 - <<'PYEOF'
 import os
@@ -82,11 +84,23 @@ src = src.replace(
 
 # 3. Append the SelfMatrix deploy settings (idempotent marker).
 marker = "# --- SelfMatrix deploy settings ---"
+invite_only = os.environ["ENABLE_INVITE_REGISTRATION"].strip().lower() in ("true", "1", "yes")
+if invite_only:
+    # Token-gated registration: enable_registration must be true for anyone to
+    # register at all, but registration_requires_token means nobody can
+    # actually complete registration without a token issued via
+    # scripts/invite-token.sh. This is "invite-code registration", not open
+    # registration. See docs/operations.md.
+    registration_block = """enable_registration: true
+registration_requires_token: true"""
+else:
+    registration_block = "enable_registration: false"
+
 if marker not in src:
     src += f"""
 {marker}
 public_baseurl: "https://{os.environ["MATRIX_HOST"]}/"
-enable_registration: false
+{registration_block}
 allow_guest_access: false
 max_upload_size: {os.environ["MAX_UPLOAD_SIZE"]}
 
@@ -106,6 +120,8 @@ rc_delayed_event_mgmt:
 
 open(p, "w").write(src)
 print("  patched: PostgreSQL, public_baseurl, upload cap, MatrixRTC flags")
+if invite_only:
+    print("  registration: invite-token gated (ENABLE_INVITE_REGISTRATION=true)")
 PYEOF
 
 echo
@@ -115,3 +131,9 @@ echo "  docker compose up -d"
 echo
 echo "To create the admin user, temporarily set registration_shared_secret and run"
 echo "scripts/create-admin.sh (see README)."
+EIR_LOWER="$(printf '%s' "${ENABLE_INVITE_REGISTRATION:-false}" | tr '[:upper:]' '[:lower:]')"
+if [[ "$EIR_LOWER" =~ ^(true|1|yes)$ ]]; then
+  echo
+  echo "Invite-code registration is enabled. Issue tokens with:"
+  echo "  bash scripts/invite-token.sh create --uses 1"
+fi

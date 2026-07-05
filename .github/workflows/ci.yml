@@ -37,10 +37,16 @@ jobs:
           CINNY_TAG=latest
           SYNAPSE_REPORT_STATS=no
           TZ=UTC
+          SYNAPSE_ADMIN_TAG=0.11.4
+          SYNAPSE_ADMIN_BIND=127.0.0.1:8083
+          ENABLE_INVITE_REGISTRATION=false
           EOF
 
       - name: Validate main compose.yaml
         run: docker compose --env-file .env -f compose.yaml config -q
+
+      - name: Validate main compose.yaml with admin profile
+        run: docker compose --env-file .env -f compose.yaml --profile admin config -q
 
       - name: Create dummy rtc/.env
         run: |
@@ -63,7 +69,7 @@ jobs:
       - name: Check .env.example has required keys
         run: |
           missing=0
-          for key in SERVER_NAME MATRIX_HOST CHAT_HOST POSTGRES_PASSWORD CINNY_IMAGE; do
+          for key in SERVER_NAME MATRIX_HOST CHAT_HOST POSTGRES_PASSWORD CINNY_IMAGE SYNAPSE_ADMIN_TAG SYNAPSE_ADMIN_BIND ENABLE_INVITE_REGISTRATION; do
             if ! grep -qE "^${key}=" .env.example; then
               echo "Missing key in .env.example: ${key}" >&2
               missing=1

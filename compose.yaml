@@ -53,6 +53,23 @@ services:
     volumes:
       - ./cinny/config.json:/app/config.json:ro
 
+  synapse-admin:
+    # Moderation dashboard (react-admin SPA served by nginx; no backend logic of
+    # its own). Off by default: start explicitly with
+    #   docker compose --profile admin up -d synapse-admin
+    # NEVER expose this port to the internet — the Caddyfile blocks
+    # /_synapse/admin at the edge (docs/operations.md §4), and the browser
+    # opening this dashboard must reach Synapse's /_matrix and /_synapse/admin
+    # directly, so only bind it to a private interface (Tailscale IP, SSH
+    # tunnel, or localhost). See docs/operations.md "moderation dashboard".
+    image: awesometechnologies/synapse-admin:${SYNAPSE_ADMIN_TAG:-0.11.4}
+    profiles: ["admin"]
+    restart: unless-stopped
+    volumes:
+      - ./synapse-admin/config.json:/app/config.json:ro
+    ports:
+      - "${SYNAPSE_ADMIN_BIND:-127.0.0.1:8083}:80"
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
