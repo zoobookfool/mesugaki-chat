@@ -15,8 +15,10 @@ if [[ ! -f .env ]]; then
 fi
 
 set -a
-# shellcheck disable=SC1091
-source .env
+# Windows checkout (core.autocrlf) の .env は CRLF になりうるので、\r を落として
+# から読み込む (残すと全変数値に不可視の \r が付いて homeserver.yaml に混入する)。
+# shellcheck disable=SC1090,SC1091
+source <(tr -d '\r' < .env)
 set +a
 
 : "${SERVER_NAME:?set SERVER_NAME in .env}"
