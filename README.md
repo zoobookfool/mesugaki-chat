@@ -119,6 +119,101 @@ docker compose exec synapse register_new_matrix_user -c /data/homeserver.yaml ht
 
 目標の経路は「外部 → Cloudflare → VPS → Tailscale → 自宅サーバー(HTTP系のみ)」+「メディアは Cloudflare を迂回して VPS 直終端」です。この経路では自宅ルーターのポート開放が不要になります。従来の自宅直公開(80/443 転送)も代替案として残しています。詳細と両者の比較は [docs/home-server-network.md](docs/home-server-network.md) を見てください。
 
+## MatrixRTC backend (Phase 3)
+
+通話(LiveKit SFU + lk-jwt-service)は `rtc/` に独立した compose ファイルを用意しています。メインの `compose.yaml` とは別に、VPS で単独運用できる形にしています。
+
+1. `rtc/.env.example` を `rtc/.env` にコピーし、値を入れます(メインの `.env` とは別ファイルです)。
+
+```
+cp rtc/.env.example rtc/.env
+```
+
+2. `rtc/livekit.yaml` を生成します。`livekit.yaml` は LiveKit 自身が環境変数を展開できない(`node_ip` など)ため、`rtc/.env` の値からテンプレートを埋め込んで生成する方式です。プレースホルダのままだと生成スクリプトが止まります。
+
+```
+bash rtc/generate-livekit-config.sh
+```
+
+3. 起動します。
+
+```
+docker compose -f rtc/compose.yaml up -d
+```
+
+    `livekit` サービスは `network_mode: host` で動きます(ICE 経路を単純化するため、コンテナ個別のポートマッピングをせずホストの UDP レンジをそのまま使います)。`lk-jwt` サービスは `127.0.0.1:6080` にのみ公開し、外部へは既存のリバースプロキシ経由で通します(このリポジトリの compose 自体はリバースプロキシを持ちません)。
+
+### ファイアウォール要件
+
+- `7881/tcp`(LiveKit RTC over TCP、フォールバック用)
+- `50100-50200/udp`(LiveKit の WebRTC メディアポートレンジ)
+- `443/tcp`, `80/tcp`(リバースプロキシ経由の signaling / JWT 発行)
+
+### DNS 要件
+
+`RTC_HOST`(例: `rtc.example.com`)は Cloudflare などの CDN プロキシを経由しない DNS only のレコードにしてください。WebRTC の UDP メディアは CDN プロキシを通過できないため、クライアントがこのホストの IP に直接到達できる必要があります。
+
+### リバースプロキシ例(nginx)
+
+このリポジトリの compose は 443/80 を LiveKit 用には開けていません。前段に既存の edge リバースプロキシがある想定で、`RTC_HOST` 宛のトラフィックを次のように振り分けてください。
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name rtc.example.com;
+
+    # ... ssl_certificate / ssl_certificate_key ...
+
+    location ^~ /livekit/jwt/ {
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://127.0.0.1:6080/;
+    }
+
+    location ^~ /livekit/sfu/ {
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_buffering off;
+        proxy_read_timeout 120;
+        proxy_send_timeout 120;
+
+        proxy_pass http://127.0.0.1:7880/;
+    }
+}
+```
+
+### well-known 追記例
+
+`MATRIX_HOST` の `/.well-known/matrix/client` に `org.matrix.msc4143.rtc_foci` を追加し、クライアントがこの LiveKit backend を発見できるようにします。
+
+```json
+{
+  "m.homeserver": { "base_url": "https://matrix.example.com" },
+  "org.matrix.msc4143.rtc_foci": [
+    { "type": "livekit", "livekit_service_url": "https://rtc.example.com/livekit/jwt" }
+  ]
+}
+```
+
+### Synapse 追記例
+
+`homeserver.yaml` に MatrixRTC まわりの experimental feature を有効にします。
+
+```yaml
+experimental_features:
+  msc3266_enabled: true
+  msc4222_enabled: true
+  msc4354_enabled: true
+
+max_event_delay_duration: 24h
+```
+
 ## 計画
 
 - 要件(MUST/SHOULD/LATER/OUT): [docs/requirements.md](docs/requirements.md)

@@ -1,0 +1,27 @@
+services:
+  livekit:
+    image: livekit/livekit-server:v1.10.1
+    restart: unless-stopped
+    # Host networking simplifies ICE: LiveKit needs to advertise a reachable
+    # UDP port range for WebRTC media, and sharing the host network avoids
+    # NAT/port-mapping mismatches between the container and the VPS's public
+    # IP (set as node_ip in livekit.yaml).
+    network_mode: host
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    command: --config /etc/livekit.yaml
+
+  lk-jwt:
+    image: ghcr.io/element-hq/lk-jwt-service:0.4.4
+    restart: unless-stopped
+    environment:
+      LIVEKIT_JWT_PORT: 6080
+      LIVEKIT_URL: wss://${RTC_HOST}/livekit/sfu
+      LIVEKIT_KEY: ${LIVEKIT_KEY}
+      LIVEKIT_SECRET: ${LIVEKIT_SECRET}
+      # Only this homeserver's users may start/host a call; other
+      # (federated) homeservers' users can join but not start one.
+      LIVEKIT_FULL_ACCESS_HOMESERVERS: ${SERVER_NAME}
+    ports:
+      # Bound to loopback only; reached through the reverse proxy (README.md).
+      - "127.0.0.1:6080:6080"
