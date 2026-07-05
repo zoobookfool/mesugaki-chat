@@ -1,1 +1,6 @@
 docs/patches/*.patch -text
+
+# Shell scripts must stay LF: they run on Linux servers even when the repo is
+# checked out on Windows.
+*.sh text eol=lf
+scripts/systemd/* text eol=lf

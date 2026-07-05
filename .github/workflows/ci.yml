@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          scandir: "./scripts"
+          severity: warning
+
+  compose-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create dummy top-level .env
+        run: |
+          cat > .env <<'EOF'
+          SERVER_NAME=example.invalid
+          MATRIX_HOST=matrix.example.invalid
+          CHAT_HOST=chat.example.invalid
+          POSTGRES_DB=synapse
+          POSTGRES_USER=synapse
+          POSTGRES_PASSWORD=ci-placeholder-password
+          SYNAPSE_TAG=latest
+          CINNY_IMAGE=ghcr.io/example/selfmatrix-cinny
+          CINNY_TAG=latest
+          SYNAPSE_REPORT_STATS=no
+          TZ=UTC
+          EOF
+
+      - name: Validate main compose.yaml
+        run: docker compose --env-file .env -f compose.yaml config -q
+
+      - name: Create dummy rtc/.env
+        run: |
+          cat > rtc/.env <<'EOF'
+          RTC_HOST=rtc.example.invalid
+          SERVER_NAME=example.invalid
+          NODE_IP=203.0.113.10
+          LIVEKIT_KEY=ci-placeholder-key
+          LIVEKIT_SECRET=ci-placeholder-secret
+          EOF
+
+      - name: Validate rtc/compose.yaml
+        run: docker compose --env-file rtc/.env -f rtc/compose.yaml config -q
+
+  env-example-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check .env.example has required keys
+        run: |
+          missing=0
+          for key in SERVER_NAME MATRIX_HOST CHAT_HOST POSTGRES_PASSWORD CINNY_IMAGE; do
+            if ! grep -qE "^${key}=" .env.example; then
+              echo "Missing key in .env.example: ${key}" >&2
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Check rtc/.env.example has required keys
+        run: |
+          missing=0
+          for key in RTC_HOST SERVER_NAME NODE_IP LIVEKIT_KEY LIVEKIT_SECRET; do
+            if ! grep -qE "^${key}=" rtc/.env.example; then
+              echo "Missing key in rtc/.env.example: ${key}" >&2
+              missing=1
+            fi
+          done
+          exit "$missing"

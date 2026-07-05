@@ -234,6 +234,7 @@ max_event_delay_duration: 24h
 - ポップアウト技術検証(Phase 2b): [docs/popout-spike.md](docs/popout-spike.md)
 - ホスティング各社の帯域・転送量比較: [docs/bandwidth-comparison.md](docs/bandwidth-comparison.md)
 - 多言語対応 (言語パック): [docs/i18n.md](docs/i18n.md)
+- 運用 runbook: [docs/operations.md](docs/operations.md)
 
 初期リリースの目標は Phase 3(通話MVP)までです。
 
