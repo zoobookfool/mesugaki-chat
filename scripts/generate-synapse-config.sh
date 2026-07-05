@@ -1,22 +1,117 @@
 #!/usr/bin/env bash
+# Generate synapse/data/homeserver.yaml and patch it for this deploy from .env,
+# with no hand-editing required: PostgreSQL wiring, public_baseurl, upload cap,
+# reverse-proxy trust, closed registration, and the MatrixRTC feature flags.
+# Idempotent: re-running only regenerates + re-patches if you pass --force.
 set -euo pipefail
+
+cd "$(dirname "$0")/.."
 
 if [[ ! -f .env ]]; then
   cp .env.example .env
-  echo "Created .env. Edit it first, then run this script again."
+  echo "Created .env from .env.example. Edit it (SERVER_NAME, MATRIX_HOST, POSTGRES_PASSWORD, ...) then re-run." >&2
   exit 1
 fi
 
-docker compose --profile generate run --rm synapse-generate
+set -a
+# shellcheck disable=SC1091
+source .env
+set +a
 
-cat <<'MSG'
+: "${SERVER_NAME:?set SERVER_NAME in .env}"
+: "${MATRIX_HOST:?set MATRIX_HOST in .env}"
+: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}"
 
-Generated synapse/data/homeserver.yaml.
+HS="synapse/data/homeserver.yaml"
+FORCE="${1:-}"
 
-Next:
-1. Replace the database section with PostgreSQL settings from README.md.
-2. Set public_baseurl to your MATRIX_HOST.
-3. Keep enable_registration false for the private beta.
-4. Run: docker compose up -d
+if [[ -f "$HS" && "$FORCE" != "--force" ]]; then
+  echo "$HS already exists. Re-run with --force to regenerate + re-patch (overwrites it)." >&2
+  exit 1
+fi
 
-MSG
+echo "Generating base homeserver.yaml for ${SERVER_NAME}..."
+# Synapse writes the file as its container UID; remove any prior copy as root.
+sudo rm -f "$HS"
+docker compose --profile generate run --rm synapse-generate >/dev/null
+
+echo "Patching for this deploy..."
+# Patch as root (file is owned by the Synapse container UID). Values come from
+# the environment so nothing here contains a real hostname or secret.
+sudo env \
+  MATRIX_HOST="$MATRIX_HOST" \
+  POSTGRES_DB="${POSTGRES_DB:-synapse}" \
+  POSTGRES_USER="${POSTGRES_USER:-synapse}" \
+  POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+  MAX_UPLOAD_SIZE="${MAX_UPLOAD_SIZE:-90M}" \
+  HS_PATH="$HS" \
+  python3 - <<'PYEOF'
+import os
+
+p = os.environ["HS_PATH"]
+src = open(p).read()
+
+# 1. Swap the generated sqlite block for PostgreSQL.
+sqlite = """database:
+  name: sqlite3
+  args:
+    database: /data/homeserver.db"""
+pg = f"""database:
+  name: psycopg2
+  args:
+    user: {os.environ["POSTGRES_USER"]}
+    password: "{os.environ["POSTGRES_PASSWORD"]}"
+    dbname: {os.environ["POSTGRES_DB"]}
+    host: postgres
+    cp_min: 5
+    cp_max: 10"""
+assert sqlite in src, "expected generated sqlite database block not found"
+src = src.replace(sqlite, pg)
+
+# 2. Trust the reverse proxy's forwarded headers on the client/federation port.
+src = src.replace(
+    """  - port: 8008
+    tls: false
+    type: http
+    x_forwarded: true""",
+    """  - port: 8008
+    tls: false
+    type: http
+    x_forwarded: true""",
+)  # already set by generate; kept explicit for clarity
+
+# 3. Append the SelfMatrix deploy settings (idempotent marker).
+marker = "# --- SelfMatrix deploy settings ---"
+if marker not in src:
+    src += f"""
+{marker}
+public_baseurl: "https://{os.environ["MATRIX_HOST"]}/"
+enable_registration: false
+allow_guest_access: false
+max_upload_size: {os.environ["MAX_UPLOAD_SIZE"]}
+
+# MatrixRTC (Element Call) — see docs and rtc/ for the backend.
+experimental_features:
+  msc3266_enabled: true
+  msc4222_enabled: true
+  msc4354_enabled: true
+max_event_delay_duration: 24h
+rc_message:
+  per_second: 0.5
+  burst_count: 30
+rc_delayed_event_mgmt:
+  per_second: 1
+  burst_count: 20
+"""
+
+open(p, "w").write(src)
+print("  patched: PostgreSQL, public_baseurl, upload cap, MatrixRTC flags")
+PYEOF
+
+echo
+echo "Done. homeserver.yaml is ready. Next:"
+echo "  bash scripts/generate-cinny-config.sh   # client config"
+echo "  docker compose up -d"
+echo
+echo "To create the admin user, temporarily set registration_shared_secret and run"
+echo "scripts/create-admin.sh (see README)."
