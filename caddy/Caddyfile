@@ -19,6 +19,11 @@
 		Referrer-Policy "no-referrer"
 	}
 
+	# 管理API は内部ネットワークから直接叩く (docs/operations.md)
+	handle /_synapse/admin* {
+		respond 403
+	}
+
 	reverse_proxy synapse:8008
 }
 

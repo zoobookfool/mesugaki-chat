@@ -129,6 +129,22 @@ bash scripts/restore.sh backups/<timestamp>
 
 目標の経路は「外部 → Cloudflare → VPS → Tailscale → 自宅サーバー(HTTP系のみ)」+「メディアは Cloudflare を迂回して VPS 直終端」です。この経路では自宅ルーターのポート開放が不要になります。従来の自宅直公開(80/443 転送)も代替案として残しています。詳細と両者の比較は [docs/home-server-network.md](docs/home-server-network.md) を見てください。
 
+## デプロイ形態
+
+このスターターは 3 つのデプロイ形態をサポートします。roadmap では「compose profile で切り替えられる構成」を目標にしていますが、現時点では override ファイルを重ねる方式で実現しています(正直な現状です)。
+
+- **①自宅直公開**: `docker compose up -d` をそのまま実行します(caddy が 80/443 で TLS 終端)。自宅回線に固定 IP かつポート開放ができ、VPS を用意したくない人向けです。
+- **②VPS 単独**: ①と同じく既定の compose をそのまま `up` します。`rtc/` もこの同じ VPS に載せます。自宅回線の制約(CGNAT など)を避けたいが、VPS 1 台に集約したい人向けです。
+- **③自宅+VPS(経路A、推奨)**: `docker-compose.route-a.example.yml` を override として重ね、edge を VPS にします。自宅の WAN IP を晒したくない、かつデータは自宅に置きたい人向けです。
+
+```
+cp docker-compose.route-a.example.yml docker-compose.override.yml
+```
+
+`.env` に `BACKEND_BIND_IP=<Tailscale 等のプライベート IP>` を追記してください。edge 側(VPS)の nginx 設定例は [MatrixRTC backend の「リバースプロキシ例(nginx)」節](#リバースプロキシ例nginx)を参考にしてください(RTC 用の例ですが、location とヘッダの組み立て方はそのまま流用できます)。
+
+**②VPS 単独形態の注意**: データが VPS 1 台に載るため、外部(VPS 外)への定期バックアップが必須です。手順は [docs/operations.md](docs/operations.md) の「外部バックアップ(VPS 単独形態)」節を見てください。
+
 ## MatrixRTC backend (Phase 3)
 
 通話(LiveKit SFU + lk-jwt-service)は `rtc/` に独立した compose ファイルを用意しています。メインの `compose.yaml` とは別に、VPS で単独運用できる形にしています。

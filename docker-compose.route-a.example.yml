@@ -1,0 +1,33 @@
+# 経路A(自宅+VPS、推奨)の自宅側で使う override の雛形です。
+#
+# 使い方:
+#
+#   cp docker-compose.route-a.example.yml docker-compose.override.yml
+#
+# その後 .env に以下を追記します(Tailscale などのプライベート IP を指定してください。
+# 0.0.0.0 にすると LAN 全体や意図しない経路に公開されるので避けてください)。
+#
+#   BACKEND_BIND_IP=100.x.x.x
+#
+# この override は次の変更を compose.yaml に加えます。
+#
+# - caddy を無効化します(edge の TLS 終端は VPS 側が担うため、自宅側では不要です)
+# - synapse を ${BACKEND_BIND_IP}:8028 -> 8008 で公開します
+# - cinny を ${BACKEND_BIND_IP}:8082 -> 80 で公開します
+#
+# エッジ側(VPS)は matrix.example.com -> 自宅の :8028 、chat.example.com -> 自宅の :8082
+# へ proxy してください。VPS 側の nginx 設定例は README.md の
+# 「リバースプロキシ例(nginx)」節を参考にしてください(RTC 用の例ですが、
+# location とヘッダの組み立て方はそのまま流用できます)。
+
+services:
+  caddy:
+    profiles: ["disabled"]
+
+  synapse:
+    ports:
+      - "${BACKEND_BIND_IP:?set in .env}:8028:8008"
+
+  cinny:
+    ports:
+      - "${BACKEND_BIND_IP:?set in .env}:8082:80"
