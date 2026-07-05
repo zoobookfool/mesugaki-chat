@@ -208,6 +208,18 @@ Exit criteria:
 
 ## Phase 7: Product polish
 
+**スコープ確定 (2026-07-05、4 方向 recon + 運用者承認)。** exit criteria への効き方で優先順位を決定:
+①**Discord 風独自テーマ** (fork 側、新テーマ追加 + 既定化) ②**notification tuning** (新規ルーム既定の
+Discord 寄せ。既定挙動の実機確認から) ③**moderation = synapse-admin 導入** (Web ダッシュボード、
+自宅サーバー側に配置。bot 型の Draupnir は荒らしが実際に問題になるまで保留 — 従来方針どおり)
+④**SSO/OIDC は保留** (IdP 常駐は「手作業なしで回る」に逆行、MAS 移行は不可逆で時期尚早) — 代替として
+`registration_requires_token` による招待コード制を検証・導入 ⑤**custom emoji/sticker は実装不要**
+(cinny が MSC2545 実装済み、MSC2545 自体 2026-07 に正式 spec 化) — パック運用ガイドのみ
+⑥**bridge/bot は保留** (mautrix 系は API 追従の定期メンテが前提で「手作業なしで回る」に逆行。
+必要時に override で追加できる形だけ担保)。
+併走する積み残し: 外部ユーザー招待の実地確認 (Phase 1 残)、Renovate App インストール (Phase 4 残)。
+VPS 2GB 判断は Phase 7 では不要 (追加サービスは自宅側配置のため)。
+
 - 独自テーマ、custom emoji/sticker 方針
 - notification tuning
 - SSO/OIDC、moderation dashboard、bridge/bot integrations
