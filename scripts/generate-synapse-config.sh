@@ -18,7 +18,11 @@ fi
 # Windows checkout (core.autocrlf) の .env は CRLF になりうるので \r を必ず落とす —
 # 落とさないと placeholder ガードが素通りし、homeserver.yaml に不可視の \r が混入する。
 env_get() {
-  grep -E "^$1=" .env | head -1 | cut -d= -f2- | tr -d '\r'
+  # 任意キーが .env に無い場合も失敗しない (grep の exit 1 を pipefail に
+  # 拾わせない)。呼び出し側の ${VAR:-default} が正しく効くようにする。
+  local line
+  line="$(grep -E "^$1=" .env | head -1 || true)"
+  printf '%s' "${line#*=}" | tr -d ''
 }
 
 SERVER_NAME="$(env_get SERVER_NAME)"
@@ -36,6 +40,16 @@ ENABLE_INVITE_REGISTRATION="$(env_get ENABLE_INVITE_REGISTRATION)"
 # 単純なホスト名バリデーション (英数字・ドット・ハイフンのみ)。python 側で YAML/文字列
 # 埋め込みに使う前に、想定外の記号 (シェル的に危険な文字含む) が混ざっていないか確認する。
 host_pattern='^[A-Za-z0-9.-]+$'
+# DB 名/ユーザーは SQL/YAML に素で埋め込むため、識別子として安全な文字だけ許可
+ident_pattern='^[A-Za-z0-9_]+$'
+if [[ ! "${POSTGRES_DB:-synapse}" =~ $ident_pattern ]]; then
+  echo "POSTGRES_DB contains characters outside [A-Za-z0-9_]: ${POSTGRES_DB}" >&2
+  exit 1
+fi
+if [[ ! "${POSTGRES_USER:-synapse}" =~ $ident_pattern ]]; then
+  echo "POSTGRES_USER contains characters outside [A-Za-z0-9_]: ${POSTGRES_USER}" >&2
+  exit 1
+fi
 if [[ ! "$SERVER_NAME" =~ $host_pattern ]]; then
   echo "SERVER_NAME contains characters outside [A-Za-z0-9.-]: ${SERVER_NAME}" >&2
   exit 1

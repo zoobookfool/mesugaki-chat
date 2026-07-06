@@ -223,7 +223,7 @@ server {
 
 ### well-known 追記例
 
-`MATRIX_HOST` の `/.well-known/matrix/client` に `org.matrix.msc4143.rtc_foci` を追加し、クライアントがこの LiveKit backend を発見できるようにします。
+**`SERVER_NAME`** の `/.well-known/matrix/client` に `org.matrix.msc4143.rtc_foci` を追加し、クライアントがこの LiveKit backend を発見できるようにします (MatrixRTC の探索はサーバー名ホストの well-known を見ます — MATRIX_HOST 側ではありません。同梱 Caddyfile が配信しているのも SERVER_NAME 側です)。
 
 ```json
 {

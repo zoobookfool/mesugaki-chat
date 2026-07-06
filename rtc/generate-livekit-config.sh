@@ -35,5 +35,7 @@ sed \
   -e "s|\${LIVEKIT_KEY}|${LIVEKIT_KEY}|g" \
   -e "s|\${LIVEKIT_SECRET}|${LIVEKIT_SECRET}|g" \
   livekit.yaml.template > livekit.yaml
+# keys に LIVEKIT_SECRET が入るため所有者のみに絞る
+chmod 600 livekit.yaml
 
 echo "Generated rtc/livekit.yaml."

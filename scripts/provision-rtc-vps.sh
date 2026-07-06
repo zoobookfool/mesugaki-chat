@@ -224,6 +224,8 @@ NODE_IP=${NODE_IP}
 LIVEKIT_KEY=selfmatrix
 LIVEKIT_SECRET=${LIVEKIT_SECRET}
 ENVEOF
+  # LIVEKIT_SECRET を含むため所有者のみ読み書き可に絞る
+  run chmod 600 "$RTC_ENV"
 fi
 
 echo
@@ -357,7 +359,7 @@ if [[ "$WITH_EDGE" -eq 1 ]]; then
   echo "2. --with-edge already wrote org.matrix.msc4143.rtc_foci into the"
   echo "   generated /.well-known/matrix/client for ${SERVER_NAME}; no manual edit needed."
 else
-  echo "2. Add org.matrix.msc4143.rtc_foci to ${MATRIX_HOST}'s"
+  echo "2. Add org.matrix.msc4143.rtc_foci to ${SERVER_NAME}'s"
   echo "   /.well-known/matrix/client (see README.md \"well-known 追記例\")."
 fi
 

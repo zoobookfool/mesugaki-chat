@@ -14,7 +14,11 @@ fi
 # .env は値に記号を含みうるので source せず、必要な変数だけ読む。
 # Windows checkout (core.autocrlf) の .env は CRLF になりうるので \r を必ず落とす。
 env_get() {
-  grep -E "^$1=" .env | head -1 | cut -d= -f2- | tr -d '\r'
+  # 任意キーが .env に無い場合も失敗しない (grep の exit 1 を pipefail に
+  # 拾わせない)。呼び出し側の ${VAR:-default} が正しく効くようにする。
+  local line
+  line="$(grep -E "^$1=" .env | head -1 || true)"
+  printf '%s' "${line#*=}" | tr -d ''
 }
 
 POSTGRES_USER="$(env_get POSTGRES_USER)"
