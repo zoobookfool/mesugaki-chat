@@ -248,6 +248,12 @@ override 方式で追加)。exit criteria 評価: 「招待した人が説明な
 モデレーション GUI (synapse-admin) + アカウント発行の自己登録化で、日常の手作業は解消。
 実運用で残るのは招待トークン発行と月次程度の update 追従のみ。
 
+**追記 (2026-07-06、e5fd695)**: `ALLOW_CUSTOM_HOMESERVERS` を追加 (`.env` opt-in、既定 false)。
+true にすると cinny のログイン/登録画面に「カスタムホームサーバー」選択肢が増え、matrix.org 等
+既存アカウントを持つ相手がこのサーバーにアカウントを作らずログインできる。ただし federation の
+制約は変わらない (通話 SFU の早い者勝ち・deactivate が自サーバーアカウントにしか効かない等。
+詳細は docs/operations.md §2.1 の注意書きと docs/requirements.md §5 を参照)。
+
 - 独自テーマ、custom emoji/sticker 方針
 - notification tuning
 - SSO/OIDC、moderation dashboard、bridge/bot integrations

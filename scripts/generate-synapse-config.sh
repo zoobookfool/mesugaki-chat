@@ -14,16 +14,36 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
-set -a
-# Windows checkout (core.autocrlf) の .env は CRLF になりうるので、\r を落として
-# から読み込む (残すと全変数値に不可視の \r が付いて homeserver.yaml に混入する)。
-# shellcheck disable=SC1090,SC1091
-source <(tr -d '\r' < .env)
-set +a
+# .env は値に記号を含みうるので source せず、必要な変数だけ読む。
+# Windows checkout (core.autocrlf) の .env は CRLF になりうるので \r を必ず落とす —
+# 落とさないと placeholder ガードが素通りし、homeserver.yaml に不可視の \r が混入する。
+env_get() {
+  grep -E "^$1=" .env | head -1 | cut -d= -f2- | tr -d '\r'
+}
+
+SERVER_NAME="$(env_get SERVER_NAME)"
+MATRIX_HOST="$(env_get MATRIX_HOST)"
+POSTGRES_PASSWORD="$(env_get POSTGRES_PASSWORD)"
+POSTGRES_DB="$(env_get POSTGRES_DB)"
+POSTGRES_USER="$(env_get POSTGRES_USER)"
+MAX_UPLOAD_SIZE="$(env_get MAX_UPLOAD_SIZE)"
+ENABLE_INVITE_REGISTRATION="$(env_get ENABLE_INVITE_REGISTRATION)"
 
 : "${SERVER_NAME:?set SERVER_NAME in .env}"
 : "${MATRIX_HOST:?set MATRIX_HOST in .env}"
 : "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}"
+
+# 単純なホスト名バリデーション (英数字・ドット・ハイフンのみ)。python 側で YAML/文字列
+# 埋め込みに使う前に、想定外の記号 (シェル的に危険な文字含む) が混ざっていないか確認する。
+host_pattern='^[A-Za-z0-9.-]+$'
+if [[ ! "$SERVER_NAME" =~ $host_pattern ]]; then
+  echo "SERVER_NAME contains characters outside [A-Za-z0-9.-]: ${SERVER_NAME}" >&2
+  exit 1
+fi
+if [[ ! "$MATRIX_HOST" =~ $host_pattern ]]; then
+  echo "MATRIX_HOST contains characters outside [A-Za-z0-9.-]: ${MATRIX_HOST}" >&2
+  exit 1
+fi
 
 HS="synapse/data/homeserver.yaml"
 FORCE="${1:-}"
@@ -50,12 +70,18 @@ sudo env \
   ENABLE_INVITE_REGISTRATION="${ENABLE_INVITE_REGISTRATION:-false}" \
   HS_PATH="$HS" \
   python3 - <<'PYEOF'
+import json
 import os
 
 p = os.environ["HS_PATH"]
 src = open(p).read()
 
 # 1. Swap the generated sqlite block for PostgreSQL.
+# POSTGRES_PASSWORD can contain arbitrary characters (quotes, backslashes,
+# YAML-significant symbols); json.dumps() produces a JSON string literal,
+# which is also a valid YAML double-quoted scalar, so this is safe embedding
+# rather than naive string interpolation.
+password_yaml = json.dumps(os.environ["POSTGRES_PASSWORD"])
 sqlite = """database:
   name: sqlite3
   args:
@@ -64,7 +90,7 @@ pg = f"""database:
   name: psycopg2
   args:
     user: {os.environ["POSTGRES_USER"]}
-    password: "{os.environ["POSTGRES_PASSWORD"]}"
+    password: {password_yaml}
     dbname: {os.environ["POSTGRES_DB"]}
     host: postgres
     cp_min: 5

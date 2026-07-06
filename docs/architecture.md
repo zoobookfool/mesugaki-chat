@@ -102,7 +102,7 @@ Discord の「サーバー」は Matrix では基本的に Space で表現しま
 
 - グループ通話は MatrixRTC(MSC4143)+ LiveKit backend(MSC4195)を使います。クライアントは `.well-known/matrix/client` の `org.matrix.msc4143.rtc_foci` から backend を発見し、lk-jwt-service で入場トークンを得て LiveKit に接続します。
 - 通話は音声 + 画面共有を基本とし、カメラ映像は扱いません(requirements.md §3)。
-- SFU は各運用者が自前で持ちます。MatrixRTC の focus 選択により、通話は「開始した参加者の SFU」でホストされ、他サーバーのユーザーは federated(restricted)として参加します。自前サーバーを持たない参加者は通話の開始はできず、参加のみ可能です(requirements.md §5)。
+- SFU は各運用者が自前で持ちます。MatrixRTC の focus 選択により、通話は「最初にセッションへ参加した人の SFU」でホストされる、いわゆる早い者勝ち方式です。他サーバーのユーザーも federated(restricted)として参加でき、自前サーバーを持たない参加者(他ホームサーバーのアカウントのみ)も技術的には最初の参加者になれます(room power level 等の制限なし)。自サーバーの SFU を使いたい場合は自ホームサーバーのアカウントを先に参加させる運用でカバーします(requirements.md §5)。
 - 通話は E2EE を標準にします。メディアが借り物の VPS を通過するため、VPS 侵害時にも内容が漏れない状態を保ちます。
 - 視聴品質は simulcast による動的制御を基本とし、「注視タイル高画質・他は降格」をクライアント既定にします。
 

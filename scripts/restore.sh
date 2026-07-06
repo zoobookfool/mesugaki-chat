@@ -25,10 +25,16 @@ if [[ ! -f .env ]]; then
   echo ".env is missing." >&2
   exit 1
 fi
-set -a
-# shellcheck disable=SC1091
-source .env
-set +a
+
+# .env は値に記号を含みうるので source せず、必要な変数だけ読む。
+# Windows checkout (core.autocrlf) の .env は CRLF になりうるので \r を必ず落とす。
+env_get() {
+  grep -E "^$1=" .env | head -1 | cut -d= -f2- | tr -d '\r'
+}
+
+POSTGRES_DB="$(env_get POSTGRES_DB)"
+POSTGRES_USER="$(env_get POSTGRES_USER)"
+SERVER_NAME="$(env_get SERVER_NAME)"
 
 DB="${POSTGRES_DB:-synapse}"
 USER="${POSTGRES_USER:-synapse}"

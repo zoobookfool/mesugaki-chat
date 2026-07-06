@@ -39,6 +39,12 @@ CHAT_HOST="${CHAT_HOST:-}"
 RTC_HOST="${RTC_HOST:-}"
 NODE_IP="${NODE_IP:-}"
 HOME_BACKEND_IP="${HOME_BACKEND_IP:-}"
+# Port the home-side docker-compose.route-a.example.yml override publishes
+# Synapse on (${BACKEND_BIND_IP}:${HOME_SYNAPSE_PORT}:8008). Keep this in sync
+# with that file's mapping if it ever changes.
+HOME_SYNAPSE_PORT="${HOME_SYNAPSE_PORT:-8028}"
+# Port the same override publishes cinny on (${BACKEND_BIND_IP}:${HOME_CHAT_PORT}:80).
+HOME_CHAT_PORT="${HOME_CHAT_PORT:-8082}"
 WITH_EDGE=0
 DRY_RUN=0
 
@@ -59,6 +65,12 @@ Optional:
   --home-backend-ip   HOME_BACKEND_IP  Home server's Tailscale IP (route A only;
                                        see docs/home-server-network.md). Used by
                                        --with-edge to proxy matrix/chat upstream.
+  (env only)          HOME_SYNAPSE_PORT  Home-side published Synapse port
+                                       (default 8028; must match
+                                       docker-compose.route-a.example.yml).
+  (env only)          HOME_CHAT_PORT     Home-side published cinny port
+                                       (default 8082; must match
+                                       docker-compose.route-a.example.yml).
   --with-edge          Install nginx and write an RTC_HOST vhost (this VPS also
                         terminates matrix/chat as edge, route A/B). Does not run
                         certbot; prints the command to run by hand.
@@ -115,6 +127,8 @@ echo "CHAT_HOST=${CHAT_HOST}"
 echo "RTC_HOST=${RTC_HOST}"
 echo "NODE_IP=${NODE_IP}"
 echo "HOME_BACKEND_IP=${HOME_BACKEND_IP:-<unset, route B / edge not proxying matrix+chat>}"
+echo "HOME_SYNAPSE_PORT=${HOME_SYNAPSE_PORT}"
+echo "HOME_CHAT_PORT=${HOME_CHAT_PORT}"
 echo "WITH_EDGE=${WITH_EDGE}"
 echo "DRY_RUN=${DRY_RUN}"
 echo
@@ -148,6 +162,9 @@ echo "-- [1/6] docker --"
 if command -v docker >/dev/null 2>&1; then
   echo "docker already installed ($(docker --version 2>/dev/null || echo present)), skipping."
 else
+  # get.docker.com is Docker's own official install script/distribution channel
+  # (https://github.com/docker/docker-install) -- piping it to sh is the
+  # documented install method upstream, accepted here as-is.
   run bash -c "curl -fsSL https://get.docker.com | sh"
 fi
 
@@ -238,10 +255,16 @@ server {
     listen 80;
     server_name ${SERVER_NAME};
 
-    location /.well-known/matrix/ {
+    location = /.well-known/matrix/server {
         default_type application/json;
         add_header Access-Control-Allow-Origin * always;
-        root /var/www/selfmatrix-well-known;
+        return 200 '{"m.server":"${MATRIX_HOST}:443"}';
+    }
+
+    location = /.well-known/matrix/client {
+        default_type application/json;
+        add_header Access-Control-Allow-Origin * always;
+        return 200 '{"m.homeserver":{"base_url":"https://${MATRIX_HOST}"},"org.matrix.msc4143.rtc_foci":[{"type":"livekit","livekit_service_url":"https://${RTC_HOST}/livekit/jwt"}]}';
     }
 }
 
@@ -249,11 +272,15 @@ server {
     listen 80;
     server_name ${MATRIX_HOST};
 
+    location ^~ /_synapse/admin {
+        return 403;
+    }
+
     location / {
         proxy_set_header Host \$host;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_pass http://${HOME_BACKEND_IP}:8008;
+        proxy_pass http://${HOME_BACKEND_IP}:${HOME_SYNAPSE_PORT};
     }
 }
 
@@ -265,7 +292,7 @@ server {
         proxy_set_header Host \$host;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_pass http://${HOME_BACKEND_IP}:8082;
+        proxy_pass http://${HOME_BACKEND_IP}:${HOME_CHAT_PORT};
     }
 }
 
@@ -297,7 +324,6 @@ server {
 }
 NGINXEOF
 
-  run mkdir -p /var/www/selfmatrix-well-known/.well-known/matrix
   run bash -c "nginx -t && systemctl reload nginx || systemctl restart nginx"
 else
   echo
@@ -325,9 +351,15 @@ cat <<NEXT
 
 1. Confirm DNS: ${RTC_HOST} must be a DNS-only (no CDN proxy) A/AAAA record
    pointing at ${NODE_IP} (see docs/home-server-network.md).
-2. Add org.matrix.msc4143.rtc_foci to ${MATRIX_HOST}'s
-   /.well-known/matrix/client (see README.md "well-known 追記例").
 NEXT
+
+if [[ "$WITH_EDGE" -eq 1 ]]; then
+  echo "2. --with-edge already wrote org.matrix.msc4143.rtc_foci into the"
+  echo "   generated /.well-known/matrix/client for ${SERVER_NAME}; no manual edit needed."
+else
+  echo "2. Add org.matrix.msc4143.rtc_foci to ${MATRIX_HOST}'s"
+  echo "   /.well-known/matrix/client (see README.md \"well-known 追記例\")."
+fi
 
 if [[ "$WITH_EDGE" -eq 1 ]]; then
   cat <<NEXT

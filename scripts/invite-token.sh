@@ -14,7 +14,9 @@ Usage:
   scripts/invite-token.sh --help
 
 Options (anywhere after the subcommand):
-  --admin-token TOKEN   Admin access token (or set ADMIN_ACCESS_TOKEN env var)
+  --admin-token TOKEN   Admin access token (or set ADMIN_ACCESS_TOKEN env var --
+                        preferred: --admin-token ends up in argv/shell history,
+                        ADMIN_ACCESS_TOKEN does not)
   --url URL             Synapse base URL (default: http://localhost:8008)
 
 create-only options:
