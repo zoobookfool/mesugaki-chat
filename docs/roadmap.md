@@ -36,7 +36,8 @@ Exit criteria:
 vhost 追加で構成した (自宅側も既存サービスと同居のため、compose override で caddy を
 無効化して synapse/cinny を tailnet に直接公開する形)。クライアントは fork イメージ
 (ghcr.io/zoobookfool/selfmatrix-cinny) を使用。E2EE 双方向会話と federation tester を
-確認済み。外部ユーザー招待の実地確認のみ残 (tester では federation OK)。
+確認済み。**外部ユーザー招待の実地確認も完了 (2026-07-06)**: matrix.org のアカウント 2 つが
+招待を受けて実ルームに join していることを admin API で確認 — exit criteria 3 点すべて達成。
 
 - Synapse + PostgreSQL を自宅で起動
 - Cloudflare → VPS(edge Caddy)→ Tailscale → 自宅 Caddy の HTTP 経路を通す
@@ -262,6 +263,29 @@ Exit criteria:
 
 - 招待した人が説明なしで日常利用できる
 - 運用者が毎日手作業で面倒を見なくても回る
+
+## Phase 8: Dogfooding と Discord パリティ(随時)
+
+Phase 0〜7 完走後の運用フェーズ。実利用で見つかった改善点と「Discord にある機能は基本対応する」
+方針 (requirements.md §9、2026-07-06 決定) のバックログをここで管理する。
+
+- **ノイズ抑制 (Krisp 相当) のスパイク** — 方式選定 (LiveKit Krisp SDK / RNNoise WASM 等)。
+  requirements.md §3 に SHOULD として追加済み。配線ポイントは EC の ConnectionFactory
+  (audioCaptureDefaults) 付近と調査済み
+- **SFU 切断時の自動再参加** — 2026-07-06 の実測 (検証 V4) で、SFU 再起動時に通話が自動復帰しない
+  ことを確認 (LiveKit ルームはインメモリで消え、クライアントは数秒で再接続を断念して
+  「Reconnecting...」のまま)。当面は運用ルール (operations.md §2.6) で回避し、恒久対応は
+  クライアント側の join フロー再実行 (fork or upstream 提案) を検討
+- **EC レビュー指摘の design-mismatch ①②③** (ポップアウト操作 UI / ミニタイル名前非表示 /
+  画面共有の自動スポットライト化廃止) と **i18n 残り一括** — 外部レビュー対応の Wave C/D として進行中
+- **EC fork のセキュリティパッチ棚卸し** — upstream の SECURITY コミットを四半期毎に確認して
+  チェリーピック (v0.20.1 固定の代償。レビュー H1)
+- **検証記録 (2026-07-06)**: バックアップの E2EE 忠実性は実証済み (cross-signing 鍵・デバイス鍵・
+  署名鍵すべてハッシュ一致で復元)。ただしオンライン鍵バックアップ (e2e_room_keys) は設定者ゼロで
+  「器」の検証に留まる — 運用者アカウントでの鍵バックアップ設定を推奨。SFU 早い者勝ち問題への
+  multi_sfu (matrixRTCMode) は「各クライアントが自ホームサーバーの SFU に接続する仕組みが機能する
+  こと」まで実測済み (サーバー間リレー不要の client multi-homing 方式)。クロス SFU のメディア到達は
+  検証続行中
 
 ## 明示的に後回し・対象外(requirements.md 参照)
 

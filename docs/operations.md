@@ -101,6 +101,13 @@ docker compose --profile admin up -d synapse-admin
 docker compose --profile admin stop synapse-admin
 ```
 
+### 2.6 SFU (rtc スタック) の再起動・更新は通話が無い時間帯に
+
+**SFU (LiveKit) を再起動すると、進行中の通話は自動復帰しません** (2026-07-06 に本番で実測)。LiveKit のルームはインメモリのため再起動で消え、クライアントの再接続試行は「room does not exist」で数秒のうちに打ち切られます。その後クライアントは「Reconnecting...」表示のまま復帰せず、参加者タイルだけが残る (Matrix 上の在席と実際のメディア接続が乖離する) 状態になります。
+
+- rtc スタックの更新・再起動は、通話が行われていない時間帯に実施してください (参加者数は Grafana の LiveKit パネルで確認できます)
+- もし通話中に再起動してしまった場合は、参加者に「一度退出して再参加」(またはページ再読込) を案内してください
+
 ## 3. レート制限
 
 `scripts/generate-synapse-config.sh` が `homeserver.yaml` に自動で入れる `rc_message` / `rc_delayed_event_mgmt` は、MatrixRTC(通話の delayed event 処理など)向けのチューニングであり、一般的な荒らし対策の設定ではありません。
