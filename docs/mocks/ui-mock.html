@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SelfMatrix UI モック v2.1 (ui-design-notes v1.3)</title>
+<style>
+  :root{
+    --bg-deep:#1E1F22; --bg-mid:#2B2D31; --bg-chat:#313338; --bg-raise:#3A3C42;
+    --line:#26272B; --accent:#5865F2; --accent-hi:#4752C4;
+    --text:#F2F3F5; --muted:#949BA4; --ok:#23A55A; --bad:#DA373C; --warn:#F0B232;
+    --radius:8px;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg-deep);color:var(--text);
+    font-family:"Segoe UI","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
+    margin:0;padding:16px;font-size:14px;line-height:1.55}
+  h1{font-size:17px;margin:0}
+  .sub{color:var(--muted);font-size:12px;margin-top:2px}
+  .top{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
+  .tabs{display:flex;gap:6px}
+  .tab{background:var(--bg-mid);border:1px solid var(--line);color:var(--muted);
+    padding:7px 14px;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600}
+  .tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .tab:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .panel{display:none}.panel.on{display:block}
+  .bar{display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:var(--bg-mid);
+    border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px;margin-bottom:10px}
+  .grp{display:flex;gap:6px;align-items:center}
+  .lbl{color:var(--muted);font-size:11px;letter-spacing:.06em}
+  .seg{display:flex;background:var(--bg-deep);border-radius:6px;padding:2px;gap:2px}
+  .seg button{background:transparent;border:0;color:var(--muted);padding:4px 10px;border-radius:5px;
+    cursor:pointer;font-size:12px;font-weight:600}
+  .seg button.on{background:var(--accent);color:#fff}
+  .seg button:disabled{opacity:.35;cursor:not-allowed}
+  .chk{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:12px;cursor:pointer}
+
+  /* ==== 通話画面 ==== */
+  .callwrap{background:var(--bg-chat);border:1px solid var(--line);border-radius:12px;
+    height:560px;display:flex;overflow:hidden;position:relative}
+  .callwrap[data-dock="top"]{flex-direction:column}
+  .callwrap[data-dock="bottom"]{flex-direction:column-reverse}
+  .callwrap[data-dock="left"]{flex-direction:row}
+  .callwrap[data-dock="right"]{flex-direction:row-reverse}
+  .strip{display:flex;gap:8px;padding:8px;flex:0 0 auto;justify-content:center}
+  .callwrap[data-dock="left"] .strip,.callwrap[data-dock="right"] .strip{flex-direction:column;justify-content:flex-start}
+  .callwrap.nostrip .strip{display:none}
+  .stagecol{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+  .avail{display:flex;gap:8px;align-items:center;padding:8px 10px 0;flex-wrap:wrap}
+  .avail .t{color:var(--muted);font-size:11.5px;letter-spacing:.04em}
+  .availchip{display:flex;gap:8px;align-items:center;background:var(--bg-raise);border:1px solid var(--line);
+    border-radius:999px;padding:4px 6px 4px 12px;font-size:12.5px}
+  .availchip button{background:var(--accent);border:0;color:#fff;border-radius:999px;padding:3px 11px;
+    cursor:pointer;font-size:11.5px;font-weight:700}
+  .stage{flex:1;display:grid;gap:10px;padding:10px;min-width:0;min-height:0;position:relative}
+
+  .tile{position:relative;border-radius:10px;overflow:hidden;background:#101114;min-width:0;min-height:0}
+  .tile .art{position:absolute;inset:0}
+  .tile .cap{position:absolute;left:10px;bottom:8px;background:rgba(0,0,0,.55);
+    padding:2px 9px;border-radius:999px;font-size:12px;display:flex;gap:6px;align-items:center;z-index:2}
+  .tile .acts{position:absolute;top:8px;right:8px;display:flex;gap:6px;opacity:0;transition:opacity .12s;z-index:3}
+  .tile:hover .acts{opacity:1}
+  .abtn{background:rgba(0,0,0,.6);border:0;color:#fff;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11.5px}
+  .abtn:hover{background:var(--accent)}
+  .tile.selectable{cursor:pointer}
+  .tile.selected{outline:3px solid var(--accent);outline-offset:-3px}
+  .tile .selbadge{position:absolute;top:8px;left:8px;background:var(--accent);color:#fff;z-index:3;
+    border-radius:6px;padding:2px 8px;font-size:11px;font-weight:800;display:none}
+  .tile.selected .selbadge{display:block}
+  .mini{flex:0 0 auto;width:150px;height:86px}
+  .mini .cap,.mini .acts,.mini .selbadge{display:none}
+
+  .pill{position:absolute;display:flex;gap:8px;align-items:center;background:rgba(0,0,0,.62);
+    border-radius:999px;padding:5px 12px 5px 6px;cursor:grab;user-select:none;touch-action:none;z-index:5}
+  .pill .av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#5865F2);
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+  .pill.speaking .av{box-shadow:0 0 0 2.5px var(--ok)}
+  .pill.speaking .nm{color:#7ee2a8}
+  .pill .mic{color:var(--bad);font-size:12px;display:none}
+  .pill.muted .mic{display:inline}
+  .pill .nm{font-size:12.5px;font-weight:600}
+
+  .ctlbar{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;display:flex;gap:8px;
+    background:rgba(20,21,24,.92);border:1px solid var(--line);padding:7px 10px;border-radius:12px;z-index:8}
+  .cbtn{height:38px;border-radius:9px;border:0;background:var(--bg-raise);color:var(--text);
+    cursor:pointer;font-size:15px;min-width:38px}
+  .cbtn.leave{background:var(--bad);padding:0 14px;font-size:13px;font-weight:700}
+  .cbtn.pop{font-size:12.5px;font-weight:700;padding:0 12px}
+
+  .toast{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:#111214;
+    border:1px solid var(--line);border-radius:10px;padding:10px 14px;display:none;gap:12px;
+    align-items:center;z-index:9;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  .toast.show{display:flex}
+  .toast button{background:var(--accent);border:0;color:#fff;border-radius:7px;padding:6px 12px;
+    cursor:pointer;font-size:12px;font-weight:700}
+
+  /* 通話ポップアウト時: メイン領域はチャットに戻り、通話はフローティング窓 */
+  .chatbehind{flex:1;display:none;flex-direction:column;min-height:0}
+  .callwrap.popped .stagecol,.callwrap.popped .strip{display:none}
+  .callwrap.popped .chatbehind{display:flex}
+  .callwrap.popped .ctlbar{display:none}
+  .floatwin{position:absolute;width:430px;height:290px;right:26px;top:26px;background:#101114;
+    border:1px solid var(--accent);border-radius:12px;display:none;flex-direction:column;z-index:20;
+    box-shadow:0 16px 42px rgba(0,0,0,.6);overflow:hidden}
+  .callwrap.popped .floatwin{display:flex}
+  .floatwin .fhead{background:var(--bg-deep);padding:6px 10px;font-size:12px;color:var(--muted);
+    display:flex;justify-content:space-between;align-items:center;cursor:grab;user-select:none;touch-action:none}
+  .floatwin .fhead b{color:var(--text)}
+  .floatwin .fbody{flex:1;position:relative;display:flex;gap:6px;padding:6px}
+  .floatwin .tile{flex:1}
+  .floatwin .fctl{display:flex;gap:6px;justify-content:center;padding:6px;background:var(--bg-deep)}
+  .floatwin .fctl button{background:var(--bg-raise);border:0;color:var(--text);border-radius:7px;
+    width:32px;height:30px;cursor:pointer}
+  .floatwin .close{background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:14px}
+
+  .msgs{flex:1;padding:12px 14px;display:flex;flex-direction:column;gap:12px;overflow:auto}
+  .msg{display:flex;gap:10px}
+  .msg .av{width:36px;height:36px;border-radius:50%;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+  .msg .who{font-weight:700;font-size:13.5px}
+  .msg .when{color:var(--muted);font-size:11px;margin-left:6px}
+  .msg p{margin:2px 0 0;color:#DBDEE1}
+  .composer{margin:0 14px 14px;background:var(--bg-raise);border-radius:10px;padding:10px 12px;
+    color:var(--muted);font-size:13.5px}
+  .chead{padding:10px 14px;border-bottom:1px solid var(--line);font-weight:700;font-size:14px}
+
+  /* ==== シェル ==== */
+  .shell{background:var(--bg-chat);border:1px solid var(--line);border-radius:12px;height:520px;display:grid;overflow:hidden}
+  .rail{background:var(--bg-deep);display:flex;gap:10px;padding:10px;align-items:center}
+  .rail .srv{width:44px;height:44px;border-radius:50%;background:var(--bg-raise);flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;cursor:pointer;transition:border-radius .15s}
+  .rail .srv:hover,.rail .srv.on{border-radius:14px;background:var(--accent)}
+  .chans{background:var(--bg-mid);padding:10px;display:flex;gap:4px;overflow:auto}
+  .chans .hd{font-size:11px;color:var(--muted);letter-spacing:.06em;padding:4px 8px;flex:0 0 auto}
+  .ch{padding:5px 10px;border-radius:6px;color:var(--muted);cursor:pointer;font-size:13.5px;white-space:nowrap;flex:0 0 auto}
+  .ch:hover{background:var(--bg-raise);color:var(--text)}
+  .ch.on{background:var(--bg-raise);color:var(--text)}
+  .ch.voice::before{content:"🔊 "}.ch.text::before{content:"# ";color:var(--muted)}
+  .chat{display:flex;flex-direction:column;min-width:0;min-height:0}
+  .firstrun{position:absolute;inset:0;background:rgba(10,10,12,.6);display:flex;align-items:center;
+    justify-content:center;z-index:30}
+  .frcard{background:var(--bg-mid);border:1px solid var(--line);border-radius:14px;padding:22px 26px;
+    max-width:430px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
+  .frcard h3{margin:0 0 6px;font-size:15px}
+  .frcard p{margin:0 0 14px;color:var(--muted);font-size:13px}
+  .frcard .row{display:flex;gap:8px;justify-content:flex-end}
+  .frcard button{border:0;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:13px}
+  .frcard .pri{background:var(--accent);color:#fff}
+  .frcard .sec{background:var(--bg-raise);color:var(--text)}
+
+  .shell[data-s="left"][data-c="left"]{grid-template-columns:64px 200px 1fr;grid-template-areas:"S C M"}
+  .shell[data-s="left"][data-c="right"]{grid-template-columns:64px 1fr 200px;grid-template-areas:"S M C"}
+  .shell[data-s="right"][data-c="left"]{grid-template-columns:200px 1fr 64px;grid-template-areas:"C M S"}
+  .shell[data-s="right"][data-c="right"]{grid-template-columns:1fr 200px 64px;grid-template-areas:"M C S"}
+  .shell[data-s="top"][data-c="left"]{grid-template-rows:64px 1fr;grid-template-columns:200px 1fr;grid-template-areas:"S S" "C M"}
+  .shell[data-s="top"][data-c="right"]{grid-template-rows:64px 1fr;grid-template-columns:1fr 200px;grid-template-areas:"S S" "M C"}
+  .shell[data-s="bottom"][data-c="left"]{grid-template-rows:1fr 64px;grid-template-columns:200px 1fr;grid-template-areas:"C M" "S S"}
+  .shell[data-s="bottom"][data-c="right"]{grid-template-rows:1fr 64px;grid-template-columns:1fr 200px;grid-template-areas:"M C" "S S"}
+  .shell[data-c="top"][data-s="left"]{grid-template-columns:64px 1fr;grid-template-rows:46px 1fr;grid-template-areas:"S C" "S M"}
+  .shell[data-c="top"][data-s="right"]{grid-template-columns:1fr 64px;grid-template-rows:46px 1fr;grid-template-areas:"C S" "M S"}
+  .shell[data-c="bottom"][data-s="left"]{grid-template-columns:64px 1fr;grid-template-rows:1fr 46px;grid-template-areas:"S M" "S C"}
+  .shell[data-c="bottom"][data-s="right"]{grid-template-columns:1fr 64px;grid-template-rows:1fr 46px;grid-template-areas:"M S" "C S"}
+  .shell[data-s="top"][data-c="top"]{grid-template-rows:64px 46px 1fr;grid-template-columns:1fr;grid-template-areas:"S" "C" "M"}
+  .shell[data-s="top"][data-c="bottom"]{grid-template-rows:64px 1fr 46px;grid-template-columns:1fr;grid-template-areas:"S" "M" "C"}
+  .shell[data-s="bottom"][data-c="top"]{grid-template-rows:46px 1fr 64px;grid-template-columns:1fr;grid-template-areas:"C" "M" "S"}
+  .shell[data-s="bottom"][data-c="bottom"]{grid-template-rows:1fr 46px 64px;grid-template-columns:1fr;grid-template-areas:"M" "C" "S"}
+  .rail{grid-area:S}.chans{grid-area:C}.chat{grid-area:M}
+  .shell[data-s="left"] .rail,.shell[data-s="right"] .rail{flex-direction:column}
+  .shell[data-c="left"] .chans,.shell[data-c="right"] .chans{flex-direction:column}
+  .shell[data-c="top"] .chans,.shell[data-c="bottom"] .chans{flex-direction:row;align-items:center;padding:6px 10px}
+  .shell[data-c="top"] .ch,.shell[data-c="bottom"] .ch{background:var(--bg-raise);border-radius:999px;padding:4px 12px}
+  .shell[data-c="top"] .ch.on,.shell[data-c="bottom"] .ch.on{background:var(--accent);color:#fff}
+  .shell[data-c="top"] .hd,.shell[data-c="bottom"] .hd{display:none}
+
+  .note{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;
+    border-radius:50%;background:var(--warn);color:#111;font-size:11px;font-weight:800;cursor:help;vertical-align:2px}
+  .legend{margin-top:14px;background:var(--bg-mid);border:1px solid var(--line);border-radius:10px;padding:12px 16px}
+  .legend h2{font-size:13px;margin:0 0 8px;color:var(--muted);letter-spacing:.05em}
+  .legend ol{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:6px 22px}
+  .legend li{font-size:12.5px;color:#C8CCD1;display:flex;gap:8px}
+  .legend li b{color:var(--text)}
+  .legend .new{color:var(--warn);font-weight:800}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div>
+    <h1>SelfMatrix UI モック v2.1</h1>
+    <div class="sub">ui-design-notes <b>v1.3</b> (2026-07-06 フィードバック反映)。★ = v1.2 からの変更点。番号は下の合意リスト対応</div>
+  </div>
+  <div class="tabs">
+    <button class="tab on" data-p="call">① 通話画面</button>
+    <button class="tab" data-p="shell">② ドッキングシェル</button>
+  </div>
+</div>
+
+<!-- ============ 通話画面 ============ -->
+<div class="panel on" id="p-call">
+  <div class="bar">
+    <div class="grp"><span class="lbl">表示モード <span class="note" title="合意②★: 注視⇔グリッドの2モード切替式">2</span></span>
+      <div class="seg" id="modeSeg">
+        <button data-m="focus" class="on">注視 (既定)</button>
+        <button data-m="grid">グリッド</button>
+      </div>
+    </div>
+    <label class="chk" id="emphWrap"><input type="checkbox" id="emphSel"> 強調選択 <span class="note" title="合意②★: グリッド中に ON にしてタイルを選ぶと、選択タイルが大きく・非選択がミニタイルに。1 枚だけ選ぶと注視モードへ (合意③)">2</span></label>
+    <div class="grp"><span class="lbl">ミニタイル位置 <span class="note" title="合意⑤: 上下左右">5</span></span>
+      <div class="seg" id="dockSeg">
+        <button data-d="top">上</button><button data-d="bottom" class="on">下</button>
+        <button data-d="left">左</button><button data-d="right">右</button>
+      </div>
+    </div>
+    <label class="chk"><input type="checkbox" id="hideStrip"> ミニタイルを隠す</label>
+    <button class="tab" id="demoShare" style="padding:5px 10px;font-size:12px">デモ: リモートが画面共有を開始</button>
+  </div>
+
+  <div class="callwrap" id="call" data-dock="bottom">
+    <div class="toast" id="toast">📺 画面共有が開始されました <button id="toastAct">見る</button></div>
+
+    <div class="stagecol">
+      <div class="avail" id="avail"></div>
+      <div class="stage" id="stage"></div>
+    </div>
+    <div class="strip" id="strip"></div>
+
+    <!-- ポップアウト時にメイン領域へ出るチャット (目的: 通話とチャットの同時利用) -->
+    <div class="chatbehind">
+      <div class="chead"># general <span style="color:var(--muted);font-weight:400;font-size:12px">— 通話は別ウィンドウで継続中</span></div>
+      <div class="msgs">
+        <div class="msg"><div class="av" style="background:#5865F2">A</div><div><span class="who">alice</span><span class="when">今日 21:12</span><p>配信見ながらチャットも打てる</p></div></div>
+        <div class="msg"><div class="av" style="background:#23A55A">B</div><div><span class="who">bob</span><span class="when">今日 21:12</span><p>これがやりたかったやつ</p></div></div>
+      </div>
+      <div class="composer">#general にメッセージを送信</div>
+    </div>
+
+    <!-- 通話UIのフローティング窓 (実際は別 OS ウィンドウ。モックでは疑似窓で表現) -->
+    <div class="floatwin" id="floatwin">
+      <div class="fhead" id="fhead"><span>🔊 <b>Voice Lounge</b> — 通話ウィンドウ (ドラッグ可)</span>
+        <button class="close" id="popClose" title="ポップアウトを閉じてメインに戻す">✕ 戻す</button></div>
+      <div class="fbody" id="fbody"></div>
+      <div class="fctl"><button>🎙</button><button>🔊</button><button>🖥</button></div>
+    </div>
+
+    <div class="ctlbar">
+      <button class="cbtn" title="マイク">🎙</button>
+      <button class="cbtn" title="スピーカー">🔊</button>
+      <button class="cbtn" title="画面共有">🖥</button>
+      <button class="cbtn pop" id="popBtn" title="通話UIを別ウィンドウへ (合意⑦★)">🗗 ポップアウト</button>
+      <button class="cbtn leave">退出</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ シェル ============ -->
+<div class="panel" id="p-shell">
+  <div class="bar">
+    <div class="grp"><span class="lbl">サーバー枠 <span class="note" title="合意⑧">8</span></span>
+      <div class="seg" id="sSeg">
+        <button data-v="left" class="on">左</button><button data-v="right">右</button>
+        <button data-v="top">上</button><button data-v="bottom">下</button>
+      </div>
+    </div>
+    <div class="grp"><span class="lbl">チャンネル枠</span>
+      <div class="seg" id="cSeg">
+        <button data-v="left" class="on">左</button><button data-v="right">右</button>
+        <button data-v="top">上</button><button data-v="bottom">下</button>
+      </div>
+    </div>
+    <button class="tab" id="resetDock" style="padding:5px 10px;font-size:12px">既定に戻す (Discord 風)</button>
+    <button class="tab" id="showFirstRun" style="padding:5px 10px;font-size:12px">デモ: 初回セットアップ <span class="note" title="合意⑩★: SelfMatrix を初めて使った時に 1 回だけ。通話参加時には出さない">10</span></button>
+  </div>
+
+  <div class="shell" id="shell" data-s="left" data-c="left" style="position:relative">
+    <div class="rail">
+      <div class="srv on" title="SelfMatrix">S</div><div class="srv">G</div><div class="srv">+</div>
+    </div>
+    <div class="chans">
+      <div class="hd">テキストチャンネル</div>
+      <div class="ch text on">general</div>
+      <div class="ch text">雑談</div>
+      <div class="ch text">絵文字倉庫</div>
+      <div class="hd">ボイスチャンネル</div>
+      <div class="ch voice">Voice Lounge</div>
+    </div>
+    <div class="chat">
+      <div class="chead"># general</div>
+      <div class="msgs">
+        <div class="msg"><div class="av" style="background:#5865F2">A</div><div><span class="who">alice</span><span class="when">今日 21:04</span><p>新しいテーマどう？</p></div></div>
+        <div class="msg"><div class="av" style="background:#23A55A">B</div><div><span class="who">bob</span><span class="when">今日 21:05</span><p>Discord から来た人がそのまま使えそう 👍</p></div></div>
+      </div>
+      <div class="composer">#general にメッセージを送信</div>
+    </div>
+    <div class="firstrun" id="firstrun" style="display:none">
+      <div class="frcard">
+        <h3>SelfMatrix へようこそ 👋</h3>
+        <p>レイアウトを好みに合わせられます (サーバー枠・チャンネル枠の位置、通話のミニタイル位置)。この案内は<b>初回のみ</b>表示され、あとから設定でいつでも変更できます。</p>
+        <div class="row"><button class="sec" id="frSkip">Discord 風のまま使う</button><button class="pri" id="frGo">カスタマイズする</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <h2>合意リスト (ui-design-notes v1.3) — ★は 2026-07-06 の変更</h2>
+  <ol>
+    <li><b>1.</b> 配信特化・カメラ非対応。視聴はオプトイン = 見ていない配信は購読しない</li>
+    <li><b>2.★</b> 表示モードは<b>注視⇔グリッドの 2 モード切替</b>。グリッドは<b>正方形に詰める</b>配置で、<b>視聴をオプトインした配信だけ</b>がタイルになる (未視聴は上部の「視聴できる配信」導線に出るだけで、画面は分割されない)。グリッド中の<b>「強調選択」ON</b> で任意のタイルを選ぶと、選択タイルが大きく並び非選択はミニタイルへ。OFF に戻せば均等グリッドに戻る</li>
+    <li><b>3.</b> 強調選択で 1 枚だけ選ぶと注視モードへ</li>
+    <li><b>4.</b> ミニタイルは実映像を流し続ける (simulcast 低解像度層)</li>
+    <li><b>5.</b> ミニタイル位置は上下左右から選択</li>
+    <li><b>6.</b> 話者表示は StreamKit 風オーバーレイ (緑リング/ミュートアイコン、ピルはドラッグ可 — 掴んで動かせます)</li>
+    <li><b>7.★</b> ポップアウトの主対象は<b>通話 UI 全体</b> (目的: 通話 UI とチャット UI を同時に見て・触る)。モックではフローティング疑似窓で表現 — 実物は別 OS ウィンドウ。配信単体のポップアウト (実装済み・再接続なし) は補助機能として残す</li>
+    <li><b>8.</b> シェル: サーバー枠・チャンネル枠とも上下左右 (上下配置時はチップ列)</li>
+    <li><b>9.</b> 既定は Discord 風: 枠は左、ミニタイル下、注視モード</li>
+    <li><b>10.★</b> 配置セットアップの案内は <b>SelfMatrix の初回利用時に 1 回だけ</b> (デモボタンで表示)。通話参加時には毎回出さない</li>
+    <li><b>+.</b> ミニタイルに名前ピルは出さない / 画面共有で自動レイアウト切替はせずトースト通知</li>
+  </ol>
+</div>
+
+<script>
+(() => {
+  const tabs = document.querySelectorAll('.tab[data-p]');
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('on'));
+    t.classList.add('on');
+    document.getElementById('p-call').classList.toggle('on', t.dataset.p === 'call');
+    document.getElementById('p-shell').classList.toggle('on', t.dataset.p === 'shell');
+  }));
+
+  // ---- 通話状態 ----
+  const peers = [
+    { id: 'alice', name: 'alice の配信', hue: 250, watching: true,  speaking: true,  muted: false },
+    { id: 'bob',   name: 'bob の配信',   hue: 150, watching: false, speaking: false, muted: false },
+    { id: 'carol', name: 'carol の配信', hue: 20,  watching: false, muted: true },
+    { id: 'dave',  name: 'dave の配信',  hue: 300, watching: false, muted: false },
+  ];
+  let mode = 'focus';            // focus | grid
+  let focusId = 'alice';
+  let emph = false;              // 強調選択 ON/OFF
+  let selected = new Set();      // 強調選択中のタイル
+
+  const stage = document.getElementById('stage');
+  const strip = document.getElementById('strip');
+  const avail = document.getElementById('avail');
+  const call = document.getElementById('call');
+  const emphChk = document.getElementById('emphSel');
+
+  const watched = () => peers.filter(p => p.watching);
+  const unwatched = () => peers.filter(p => !p.watching);
+
+  function art(p, big) {
+    return `<div class="art" style="background:
+      radial-gradient(120% 90% at 20% 15%, hsl(${p.hue} 60% 28%), transparent 60%),
+      radial-gradient(120% 100% at 85% 90%, hsl(${p.hue + 40} 55% 22%), #101114 70%)">
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+        color:rgba(255,255,255,.25);font-size:${big ? 26 : 13}px;font-weight:800">${big ? '4K 60fps' : ''}</div></div>`;
+  }
+
+  function tileHTML(p, { big = false, mini = false, selectable = false } = {}) {
+    const cls = ['tile', mini ? 'mini' : '', selectable ? 'selectable' : '',
+      selected.has(p.id) ? 'selected' : ''].join(' ');
+    let inner = art(p, big);
+    if (!mini) {
+      inner += `<div class="selbadge">強調 ✓</div><div class="cap">🖥 ${p.name}</div>`;
+      inner += `<div class="acts">
+        ${mode === 'grid' && !emph ? `<button class="abtn" data-act="focus" data-id="${p.id}">注視</button>` : ''}
+        <button class="abtn" data-act="unwatch" data-id="${p.id}">視聴をやめる</button>
+        <button class="abtn" data-act="tilepop" data-id="${p.id}" title="配信単体を別窓へ (補助機能)">🗗</button>
+      </div>`;
+    }
+    return `<div class="${cls}" data-tile="${p.id}">${inner}</div>`;
+  }
+
+  function pillHTML(p) {
+    return `<div class="pill ${p.speaking ? 'speaking' : ''} ${p.muted ? 'muted' : ''}"
+      data-pill="${p.id}" style="left:14px;top:12px">
+      <div class="av">${p.id[0].toUpperCase()}</div>
+      <span class="nm">${p.id}</span><span class="mic">🎙✕</span></div>`;
+  }
+
+  function gridDims(n) { const c = Math.ceil(Math.sqrt(n)); return { c, r: Math.ceil(n / c) }; }
+
+  function render() {
+    // 視聴できる配信 (オプトイン導線) — 未視聴はタイルにならない (合意②★)
+    avail.innerHTML = unwatched().length
+      ? `<span class="t">視聴できる配信:</span>` + unwatched().map(p =>
+          `<span class="availchip">🖥 ${p.name}<button data-act="watch" data-id="${p.id}">視聴する</button></span>`).join('')
+      : '';
+
+    const hide = document.getElementById('hideStrip').checked;
+    const w = watched();
+    let stripPeers = [];
+    stage.style.gridTemplateColumns = '';
+    stage.style.gridTemplateRows = '';
+
+    if (mode === 'focus') {
+      const f = w.find(p => p.id === focusId) || w[0] || peers[0];
+      stage.innerHTML = tileHTML(f, { big: true });
+      stripPeers = w.filter(p => p.id !== f.id);
+    } else if (emph && selected.size >= 2) {
+      const sel = w.filter(p => selected.has(p.id));
+      const d = gridDims(sel.length);
+      stage.style.gridTemplateColumns = `repeat(${d.c}, 1fr)`;
+      stage.style.gridTemplateRows = `repeat(${d.r}, 1fr)`;
+      stage.innerHTML = sel.map(p => tileHTML(p, { big: true, selectable: true })).join('');
+      stripPeers = w.filter(p => !selected.has(p.id));
+    } else {
+      // 均等グリッド: 正方形に詰める (合意②★)。強調選択 ON ならタイルが選択可能
+      const d = gridDims(Math.max(w.length, 1));
+      stage.style.gridTemplateColumns = `repeat(${d.c}, 1fr)`;
+      stage.style.gridTemplateRows = `repeat(${d.r}, 1fr)`;
+      stage.innerHTML = w.map(p => tileHTML(p, { selectable: emph })).join('');
+      stripPeers = [];
+    }
+    call.classList.toggle('nostrip', hide || stripPeers.length === 0);
+    strip.innerHTML = stripPeers.map(p => tileHTML(p, { mini: true })).join('');
+
+    if (mode === 'focus' && stage.querySelector('.tile')) {
+      const first = stage.querySelector('.tile');
+      first.insertAdjacentHTML('beforeend', pillHTML(peers[0]));
+      wireDrag(first.querySelector('.pill'), first);
+    }
+    emphChk.disabled = mode !== 'grid';
+    document.getElementById('emphWrap').style.opacity = mode === 'grid' ? 1 : .4;
+  }
+
+  stage.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]');
+    if (b) {
+      const id = b.dataset.id, p = peers.find(x => x.id === id);
+      if (b.dataset.act === 'focus') { mode = 'focus'; focusId = id; syncMode(); }
+      if (b.dataset.act === 'unwatch') { p.watching = false; selected.delete(id); }
+      if (b.dataset.act === 'tilepop') { /* 補助: 配信単体ポップアウト (v1.2 実装済み) */ }
+      render(); return;
+    }
+    if (!emph || mode !== 'grid') return;
+    const t = e.target.closest('[data-tile]');
+    if (!t) return;
+    const id = t.dataset.tile;
+    selected.has(id) ? selected.delete(id) : selected.add(id);
+    if (selected.size === 1 && emphConfirm()) return; // 1枚なら注視へ (合意③)
+    render();
+  });
+  // 強調 1 枚 → 注視へは「選び終わった」判定が要るので、モックでは 600ms 猶予で判定
+  let emphTimer;
+  function emphConfirm() {
+    clearTimeout(emphTimer);
+    emphTimer = setTimeout(() => {
+      if (selected.size === 1) {
+        focusId = [...selected][0];
+        selected.clear(); emph = false; emphChk.checked = false;
+        mode = 'focus'; syncMode(); render();
+      }
+    }, 600);
+    render();
+    return true;
+  }
+
+  avail.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act="watch"]');
+    if (!b) return;
+    peers.find(x => x.id === b.dataset.id).watching = true;
+    render();
+  });
+
+  function syncMode() {
+    document.querySelectorAll('#modeSeg button').forEach(x => x.classList.toggle('on', x.dataset.m === mode));
+  }
+  document.querySelectorAll('#modeSeg button').forEach(b =>
+    b.addEventListener('click', () => { mode = b.dataset.m; if (mode === 'focus') { emph = false; emphChk.checked = false; selected.clear(); } syncMode(); render(); }));
+  emphChk.addEventListener('change', () => { emph = emphChk.checked; if (!emph) selected.clear(); render(); });
+  document.querySelectorAll('#dockSeg button').forEach(b =>
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#dockSeg button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on'); call.dataset.dock = b.dataset.d;
+    }));
+  document.getElementById('hideStrip').addEventListener('change', render);
+
+  // 画面共有トースト (自動切替なし)
+  const toast = document.getElementById('toast');
+  let toastTimer;
+  document.getElementById('demoShare').addEventListener('click', () => {
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 8000);
+  });
+  document.getElementById('toastAct').addEventListener('click', () => {
+    toast.classList.remove('show');
+    const p = peers.find(x => !x.watching); if (p) p.watching = true;
+    render();
+  });
+
+  // 通話UI全体ポップアウト (合意⑦★)
+  const floatwin = document.getElementById('floatwin');
+  document.getElementById('popBtn').addEventListener('click', () => {
+    call.classList.add('popped');
+    document.getElementById('fbody').innerHTML =
+      watched().slice(0, 2).map(p => tileHTML(p, { mini: false })).join('') || tileHTML(peers[0]);
+    document.getElementById('fbody').querySelectorAll('.acts,.selbadge').forEach(x => x.remove());
+  });
+  document.getElementById('popClose').addEventListener('click', () => call.classList.remove('popped'));
+  wireDrag(document.getElementById('fhead'), call, floatwin);
+
+  // ドラッグ (話者ピル / フローティング窓)
+  function wireDrag(handle, bounds, target) {
+    if (!handle) return;
+    const el = target || handle;
+    let sx, sy, ox, oy, dragging = false;
+    handle.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button')) return; // ボタン操作はドラッグにしない
+      dragging = true; handle.setPointerCapture(e.pointerId);
+      sx = e.clientX; sy = e.clientY; ox = el.offsetLeft; oy = el.offsetTop;
+    });
+    handle.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const r = bounds.getBoundingClientRect();
+      el.style.left = Math.min(Math.max(0, ox + e.clientX - sx), r.width - el.offsetWidth) + 'px';
+      el.style.top = Math.min(Math.max(0, oy + e.clientY - sy), r.height - el.offsetHeight) + 'px';
+      el.style.right = 'auto';
+    });
+    handle.addEventListener('pointerup', () => { dragging = false; });
+  }
+
+  setInterval(() => {
+    peers[0].speaking = !peers[0].speaking;
+    const pill = document.querySelector('[data-pill="alice"]');
+    if (pill) pill.classList.toggle('speaking', peers[0].speaking);
+  }, 2200);
+
+  render();
+
+  // ---- シェル ----
+  const shell = document.getElementById('shell');
+  function seg(id, attr) {
+    document.querySelectorAll(`#${id} button`).forEach(b =>
+      b.addEventListener('click', () => {
+        document.querySelectorAll(`#${id} button`).forEach(x => x.classList.remove('on'));
+        b.classList.add('on'); shell.dataset[attr] = b.dataset.v;
+      }));
+  }
+  seg('sSeg', 's'); seg('cSeg', 'c');
+  document.getElementById('resetDock').addEventListener('click', () => {
+    shell.dataset.s = 'left'; shell.dataset.c = 'left';
+    document.querySelectorAll('#sSeg button').forEach(x => x.classList.toggle('on', x.dataset.v === 'left'));
+    document.querySelectorAll('#cSeg button').forEach(x => x.classList.toggle('on', x.dataset.v === 'left'));
+  });
+  const fr = document.getElementById('firstrun');
+  document.getElementById('showFirstRun').addEventListener('click', () => { fr.style.display = 'flex'; });
+  document.getElementById('frSkip').addEventListener('click', () => { fr.style.display = 'none'; });
+  document.getElementById('frGo').addEventListener('click', () => { fr.style.display = 'none'; });
+})();
+</script>
+</body>
+</html>
