@@ -2,7 +2,7 @@
 
 Cinny fork + Matrix/Synapse で、Discord 風のテキストチャット + 通話基盤を作るための公開リポジトリです。
 
-現時点では、公開してよいデプロイ雛形と計画ドキュメントを置いています。要件・目標構成・進行計画は `docs/requirements.md` / `docs/architecture.md` / `docs/roadmap.md` を正とします。クライアント fork の差分は、選定スパイク(`docs/client-spike.md`)の完了後に `client/` へ入れる予定です。
+このリポジトリはデプロイ雛形 (compose / スクリプト) と利用・運用ドキュメントを持ちます。目標構成の説明は [docs/architecture.md](docs/architecture.md) を見てください。計画・要件・UI 設計・スパイク/レビュー記録などの作業文書は [selfmatrix-workspace](https://github.com/zoobookfool/selfmatrix-workspace) に分離しています (2026-07-06 の運用ルール)。
 
 この構成の狙いは次の5つです。
 
@@ -249,25 +249,17 @@ max_event_delay_duration: 24h
 
 ## ハイレゾ音声(拡張オプション)
 
-192kHz/24bit の非圧縮音声を JackTrip (hub mode) で中継する、本体とは結合しない独立のオプションモジュールです。**別リポジトリ [zoobookfool/selfmatrix-hires](https://github.com/zoobookfool/selfmatrix-hires) として提供します**(サーバー構築スクリプト + 参加者/運用者ガイド)。クライアント fork には手を入れず、ネイティブアプリでの参加が前提です。有効化しなくても通常の通話・チャットには影響ありません。設計の経緯は [docs/hires-spike.md](docs/hires-spike.md) を参照してください。
+192kHz/24bit の非圧縮音声を JackTrip (hub mode) で中継する、本体とは結合しない独立のオプションモジュールです。**別リポジトリ [zoobookfool/selfmatrix-hires](https://github.com/zoobookfool/selfmatrix-hires) として提供します**(サーバー構築スクリプト + 参加者/運用者ガイド)。クライアント fork には手を入れず、ネイティブアプリでの参加が前提です。有効化しなくても通常の通話・チャットには影響ありません。設計の経緯は [workspace の hires-spike.md](https://github.com/zoobookfool/selfmatrix-workspace/blob/main/hires-spike.md) を参照してください。
 
-## 計画
+## 計画・設計 (workspace)
 
-- 要件(MUST/SHOULD/LATER/OUT): [docs/requirements.md](docs/requirements.md)
-- 目標構成と容量試算: [docs/architecture.md](docs/architecture.md)
-- 進行計画(Phase 0〜7): [docs/roadmap.md](docs/roadmap.md)
-- クライアント選定スパイク: [docs/client-spike.md](docs/client-spike.md) / 結果: [docs/client-spike-results.md](docs/client-spike-results.md)(Phase 2a 合格、Cinny fork 続行)
-- クライアント UI 設計メモ: [docs/ui-design-notes.md](docs/ui-design-notes.md)
-- ポップアウト技術検証(Phase 2b): [docs/popout-spike.md](docs/popout-spike.md)
-- ホスティング各社の帯域・転送量比較: [docs/bandwidth-comparison.md](docs/bandwidth-comparison.md)
-- 多言語対応 (言語パック): [docs/i18n.md](docs/i18n.md)
-- 運用 runbook: [docs/operations.md](docs/operations.md)
+計画 (要件/roadmap)・UI 設計・スパイク記録・AI レビュー記録は [selfmatrix-workspace](https://github.com/zoobookfool/selfmatrix-workspace) にあります。
 
 初期リリースの目標は Phase 3(通話MVP)までです。
 
 ## 改修参加
 
-改修案は Issue へ、実装案は Pull Request へお願いします。要件の判断基準は `docs/requirements.md` を正とします。
+改修案は Issue へ、実装案は Pull Request へお願いします。要件の判断基準は [workspace の requirements.md](https://github.com/zoobookfool/selfmatrix-workspace/blob/main/requirements.md) を正とします。
 
 - UI/文言/テーマ改修: `client/` に入るクライアント fork が対象
 - デプロイ/運用改修: `compose.yaml`, `docs/`, `scripts/` が対象

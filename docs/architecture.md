@@ -72,7 +72,7 @@ flowchart LR
 スターターは次の 2 形態を一級サポートします(友人の自前運用を含む)。
 
 - **A: 自宅 + VPS**(このドキュメントの既定): データは自宅、edge Caddy と MatrixRTC backend は VPS。System topology 図と Component placement はこの形態の記述です
-- **B: VPS 単独**: 全コンポーネントを 1 台の VPS に集約します。Cloudflare / Tailscale は任意。データが VPS に載るため、ログ保全(requirements.md §1)の条件として VPS 外への定期バックアップが必須です
+- **B: VPS 単独**: 全コンポーネントを 1 台の VPS に集約します。Cloudflare / Tailscale は任意。データが VPS に載るため、ログ保全(workspace requirements.md §1)の条件として VPS 外への定期バックアップが必須です
 
 compose の profile で両形態を切り替えられる構成を目指します(roadmap Phase 4)。
 
@@ -83,7 +83,7 @@ compose の profile で両形態を切り替えられる構成を目指します
 - WebRTC 系: 視聴者 1 人あたり受信 ≒ 3 × 25 ≒ 75Mbps(共有中の人は 2 本受信 ≒ 50Mbps)。VPS 送出合計 ≒ 7 人 × 75 + 3 人 × 50 ≒ **0.7Gbps(ピーク)**
 - ハイレゾ系(全員発話の最悪値): 非圧縮 192kHz/24bit/2ch ≒ 9.2Mbps/人 → VPS 送出 ≒ **0.8Gbps**。FLAC 等の可逆圧縮でおおむね半分以下。両系統の同時最悪値を抑えるため**ハイレゾは可逆圧縮を既定**とする
 - VPS の回線帯域は当面の選定条件にしない(回線は将来変更予定)。上記は参考値として残す
-- 視聴側にも 3 本同時受信 ≒ 75Mbps と 4K60 × 3 のデコード負荷がかかるため、simulcast による動的降格(requirements.md §3)は前提のまま維持する
+- 視聴側にも 3 本同時受信 ≒ 75Mbps と 4K60 × 3 のデコード負荷がかかるため、simulcast による動的降格(workspace requirements.md §3)は前提のまま維持する
 - SFU はトランスコードしないため CPU 負荷は軽い。律速は NIC/帯域
 - 将来、帯域コストが問題になった場合の代替案として「RTC 用ホストのみ自宅 IP 直公開」を保持する(秘匿性とのトレードオフ)
 
@@ -101,8 +101,8 @@ Discord の「サーバー」は Matrix では基本的に Space で表現しま
 ## Realtime media model
 
 - グループ通話は MatrixRTC(MSC4143)+ LiveKit backend(MSC4195)を使います。クライアントは `.well-known/matrix/client` の `org.matrix.msc4143.rtc_foci` から backend を発見し、lk-jwt-service で入場トークンを得て LiveKit に接続します。
-- 通話は音声 + 画面共有を基本とし、カメラ映像は扱いません(requirements.md §3)。
-- SFU は各運用者が自前で持ちます。MatrixRTC の focus 選択により、通話は「最初にセッションへ参加した人の SFU」でホストされる、いわゆる早い者勝ち方式です。他サーバーのユーザーも federated(restricted)として参加でき、自前サーバーを持たない参加者(他ホームサーバーのアカウントのみ)も技術的には最初の参加者になれます(room power level 等の制限なし)。自サーバーの SFU を使いたい場合は自ホームサーバーのアカウントを先に参加させる運用でカバーします(requirements.md §5)。
+- 通話は音声 + 画面共有を基本とし、カメラ映像は扱いません(workspace requirements.md §3)。
+- SFU は各運用者が自前で持ちます。MatrixRTC の focus 選択により、通話は「最初にセッションへ参加した人の SFU」でホストされる、いわゆる早い者勝ち方式です。他サーバーのユーザーも federated(restricted)として参加でき、自前サーバーを持たない参加者(他ホームサーバーのアカウントのみ)も技術的には最初の参加者になれます(room power level 等の制限なし)。自サーバーの SFU を使いたい場合は自ホームサーバーのアカウントを先に参加させる運用でカバーします(workspace requirements.md §5)。
 - 通話は E2EE を標準にします。メディアが借り物の VPS を通過するため、VPS 侵害時にも内容が漏れない状態を保ちます。
 - 視聴品質は simulcast による動的制御を基本とし、「注視タイル高画質・他は降格」をクライアント既定にします。
 
