@@ -47,8 +47,8 @@ services:
   cinny:
     # SelfMatrix fork image (bundles the forked element-call embedded build).
     # Built by the fork's CI: https://github.com/zoobookfool/selfmatrix-cinny
-    # CINNY_TAG defaults to latest (fork CI updates it on every merge); pin to a sha- tag via .env if you need reproducibility.
-    image: ${CINNY_IMAGE:-ghcr.io/zoobookfool/selfmatrix-cinny}:${CINNY_TAG:-latest}
+    # The fallback is an intentionally reviewed commit image. Do not use a moving `latest` tag here.
+    image: ${CINNY_IMAGE:-ghcr.io/zoobookfool/selfmatrix-cinny}:${CINNY_TAG:-sha-ec64b63}
     restart: unless-stopped
     volumes:
       - ./cinny/config.json:/app/config.json:ro

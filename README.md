@@ -77,8 +77,9 @@ bash scripts/generate-cinny-config.sh
 }
 ```
 
-    クライアントのイメージは SelfMatrix fork(`ghcr.io/zoobookfool/selfmatrix-cinny`)が既定です。
-    別ビルドを使う場合は `.env` の `CINNY_IMAGE` / `CINNY_TAG` を差し替えます。
+    クライアントのイメージは SelfMatrix fork (`ghcr.io/zoobookfool/selfmatrix-cinny`) のレビュー済み
+    `sha-` タグが既定です。更新時は `.env` の `CINNY_TAG` を意図したコミットのタグへ明示的に
+    差し替えます。`latest` は再現性がないため本番では使用しません。
 
 5. 起動します。
 
